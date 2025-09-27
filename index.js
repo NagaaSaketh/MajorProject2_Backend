@@ -338,34 +338,81 @@ async function createComment(commentData) {
 app.post("/leads/:id/comments", async (req, res) => {
   try {
     const leadID = req.params.id;
-    const {author,commentText} = req.body;
-    const existingLead = await Lead.findById(leadID);
+    const { commentText } = req.body;
+    const existingLead = await Lead.findById(leadID).populate("salesAgent");
     if (!existingLead) {
       res.status(404).json({ error: `Lead with ID ${leadID} not found.` });
       return;
     }
     const commentData = {
       lead: leadID,
-      author,
+      author: existingLead.salesAgent._id,
       commentText: commentText.trim(),
     };
     const comment = await createComment(commentData);
-    const populatedComment = await Comment.findById(comment._id).populate("author","name");
+    const populatedComment = await Comment.findById(comment._id).populate(
+      "author",
+      "name"
+    );
 
     const response = {
       id: populatedComment._id,
       commentText: populatedComment.commentText,
-      author: populatedComment.author?.name || null,
+      author: populatedComment.author?.name,
       createdAt: populatedComment.createdAt,
-    }
-
-    if (comment) {
-      res.status(201).json(response);
-    }
+    };
+    res.status(201).json(response);
   } catch (err) {
     res.status(500).json({ error: "Failed to create a comment." });
   }
 });
+
+// Function to get all the comments for a lead.
+
+async function getAllComments(leadId) {
+  try {
+    const comments = await Comment.find({ lead: leadId }).populate(
+      "author",
+      "name"
+    );
+    return comments;
+  } catch (err) {
+    console.log(err);
+    throw err;
+  }
+}
+
+// API route to retrieve all the comments for a lead.
+
+app.get("/leads/:id/comments", async (req, res) => {
+  try {
+    const leadID = req.params.id;
+
+    const existingLead = await Lead.findById(leadID);
+
+    if (!existingLead) {
+      res.status(404).json({ error: `Lead with ID ${leadID} not found.` });
+      return;
+    }
+
+    const comments = await getAllComments(leadID);
+
+    const allComments = comments.map((comment) => ({
+      id: comment._id,
+      commentText: comment.commentText,
+      author: comment.author.name,
+      createdAt: comment.createdAt,
+    }));
+    if (allComments) {
+      res.status(200).json(allComments);
+    } else {
+      res.status(404).json({ error: "No comments found." });
+    }
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch comments" });
+  }
+});
+
 
 const PORT = 3000;
 
