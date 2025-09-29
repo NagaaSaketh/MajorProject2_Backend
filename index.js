@@ -413,6 +413,123 @@ app.get("/leads/:id/comments", async (req, res) => {
   }
 });
 
+// Function to get the leads with " status:closed ".
+
+async function closedLeads() {
+  try {
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const leads = await Lead.find({
+      status: "Closed",
+      updatedAt: { $gte: sevenDaysAgo },
+    }).populate("salesAgent", "name");
+    return leads;
+  } catch (err) {
+    console.log(err);
+    throw err;
+  }
+}
+
+// API route to get all the leads with "status:closed"
+
+app.get("/report/last-week", async (req, res) => {
+  try {
+    const leads = await closedLeads();
+
+    const response = leads.map((lead) => ({
+      id: lead.id,
+      name: lead.name,
+      salesAgent: lead.salesAgent?.name,
+      closedAt: lead.closedAt,
+    }));
+
+    if (response.length != 0) {
+      res.status(200).json(response);
+    } else {
+      res.status(404).json({ error: "No closed leads found." });
+    }
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch closed leads." });
+  }
+});
+
+// Function to get the total no. of leads in the pipeline.
+
+async function totalLeads() {
+  const leads = await Lead.find();
+  try{
+    const totalLeadsInPipeline = leads.reduce((acc,curr)=>{
+      if(curr.status!=="Closed"){
+        return acc+1;
+      }
+      return acc;
+    },0)
+    return totalLeadsInPipeline;
+  }catch(err){
+    console.log(err);
+    throw(err);
+  }
+}
+
+// API routes to leads that are in pipeline.
+
+app.get("/report/pipeline",async(req,res)=>{
+  try{
+    const totalLeadsInPipeline = await totalLeads();
+    const response = {
+      totalLeadsInPipeline:totalLeadsInPipeline
+    }
+    if(response){
+      res.status(200).json(response)
+    }else{
+      res.status(404).json({error:"Pipeline is empty."})
+    }
+  }catch(err){
+    res.status(500).json({error:"Failed to fetch the pipeline leads."})
+  }
+})
+
+// Function to get the number of leads closed by each sales agent.
+
+async function leadsClosedByEachAgent() {
+  try {
+    const leads = await Lead.find({ status: "Closed" }).populate("salesAgent", "name");
+    const leadsClosedByAgents = leads.reduce((acc, curr) => {
+      if (curr.salesAgent) {
+        const agentId = curr.salesAgent._id;
+        const agentName = curr.salesAgent.name;
+        if (acc[agentId]) {
+          acc[agentId].count += 1;
+        } else {
+          acc[agentId] = {
+            agentName: agentName,
+            count: 1
+          };
+        }
+      }
+      return acc;
+    }, {});
+    const result = Object.values(leadsClosedByAgents);
+    return result;
+  } catch (err) {
+    console.log(err);
+    throw err;
+  }
+}
+
+// API route to get leads closed by each agent.
+
+app.get("/report/closed-by-agent", async (req, res) => {
+  try {
+    const leadsGroupedByAgent = await leadsClosedByEachAgent();
+
+    res.status(200).json(leadsGroupedByAgent);
+    
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch leads closed by agent." });
+  }
+});
+
 
 const PORT = 3000;
 
