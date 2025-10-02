@@ -5,6 +5,7 @@ const cors = require("cors");
 const SalesAgent = require("./models/agents.model");
 const Lead = require("./models/lead.model");
 const Comment = require("./models/comment.model");
+const Tag = require("./models/tag.model");
 
 const app = express();
 
@@ -457,43 +458,46 @@ app.get("/report/last-week", async (req, res) => {
 
 async function totalLeads() {
   const leads = await Lead.find();
-  try{
-    const totalLeadsInPipeline = leads.reduce((acc,curr)=>{
-      if(curr.status!=="Closed"){
-        return acc+1;
+  try {
+    const totalLeadsInPipeline = leads.reduce((acc, curr) => {
+      if (curr.status !== "Closed") {
+        return acc + 1;
       }
       return acc;
-    },0)
+    }, 0);
     return totalLeadsInPipeline;
-  }catch(err){
+  } catch (err) {
     console.log(err);
-    throw(err);
+    throw err;
   }
 }
 
 // API routes to leads that are in pipeline.
 
-app.get("/report/pipeline",async(req,res)=>{
-  try{
+app.get("/report/pipeline", async (req, res) => {
+  try {
     const totalLeadsInPipeline = await totalLeads();
     const response = {
-      totalLeadsInPipeline:totalLeadsInPipeline
+      totalLeadsInPipeline: totalLeadsInPipeline,
+    };
+    if (response) {
+      res.status(200).json(response);
+    } else {
+      res.status(404).json({ error: "Pipeline is empty." });
     }
-    if(response){
-      res.status(200).json(response)
-    }else{
-      res.status(404).json({error:"Pipeline is empty."})
-    }
-  }catch(err){
-    res.status(500).json({error:"Failed to fetch the pipeline leads."})
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch the pipeline leads." });
   }
-})
+});
 
 // Function to get the number of leads closed by each sales agent.
 
 async function leadsClosedByEachAgent() {
   try {
-    const leads = await Lead.find({ status: "Closed" }).populate("salesAgent", "name");
+    const leads = await Lead.find({ status: "Closed" }).populate(
+      "salesAgent",
+      "name"
+    );
     const leadsClosedByAgents = leads.reduce((acc, curr) => {
       if (curr.salesAgent) {
         const agentId = curr.salesAgent._id;
@@ -503,7 +507,7 @@ async function leadsClosedByEachAgent() {
         } else {
           acc[agentId] = {
             agentName: agentName,
-            count: 1
+            count: 1,
           };
         }
       }
@@ -524,12 +528,71 @@ app.get("/report/closed-by-agent", async (req, res) => {
     const leadsGroupedByAgent = await leadsClosedByEachAgent();
 
     res.status(200).json(leadsGroupedByAgent);
-    
   } catch (err) {
     res.status(500).json({ error: "Failed to fetch leads closed by agent." });
   }
 });
 
+// Function to create new tags
+
+async function createTags(newTags) {
+  try {
+    const tags = new Tag(newTags);
+    const savedTags = await tags.save();
+    return savedTags;
+  } catch (err) {
+    console.log(err);
+    throw err;
+  }
+}
+
+// API route to post new tags
+
+app.post("/tags", async (req, res) => {
+  const { name } = req.body;
+  try {
+    const existingTag = await Tag.findOne({ name: name });
+    if (existingTag) {
+      res.status(400).json({ error: `${name} already exists.` });
+      return;
+    }
+    const tags = await createTags(name);
+    if (tags) {
+      res.status(201).json(tags);
+    } else {
+      res.status(400).json({ error: "Please enter all the required fields." });
+    }
+  } catch (err) {
+    res.status(500).json({ error: "Failed to create tags." });
+  }
+});
+
+// Function to get all the tags
+
+async function readAllTags() {
+  try {
+    const tags = await Tag.find();
+    return tags;
+  } catch (err) {
+    console.log(err);
+    throw err;
+  }
+}
+
+// API route to get all the tags
+
+app.get("/tags", async (req, res) => {
+  try {
+    const tags = await readAllTags();
+    if (tags.length != 0) {
+      res.status(200).json(tags);
+    } else {
+      res.status(404).json({ error: "No Tags found" });
+    }
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch tags." });
+  }
+});
 
 const PORT = 3000;
 
