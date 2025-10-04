@@ -556,7 +556,7 @@ app.post("/tags", async (req, res) => {
       res.status(400).json({ error: `${name} already exists.` });
       return;
     }
-    const tags = await createTags(name);
+    const tags = await createTags({name:name});
     if (tags) {
       res.status(201).json(tags);
     } else {
