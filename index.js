@@ -184,7 +184,11 @@ app.get("/leads", async (req, res) => {
     let filters = {};
 
     if (salesAgent) {
-      filters.salesAgent = salesAgent;
+      const agent = await SalesAgent.findOne({ name: salesAgent });
+      if (!agent) {
+        return res.status(404).json({ error: "Agent not found." });
+      }
+      filters.salesAgent = agent._id;
     }
     const validStatuses = [
       "New",
@@ -556,7 +560,7 @@ app.post("/tags", async (req, res) => {
       res.status(400).json({ error: `${name} already exists.` });
       return;
     }
-    const tags = await createTags({name:name});
+    const tags = await createTags({ name: name });
     if (tags) {
       res.status(201).json(tags);
     } else {
