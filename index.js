@@ -237,6 +237,33 @@ app.get("/leads", async (req, res) => {
   }
 });
 
+// Function to get a lead by its ID.
+
+async function getLead(id) {
+  try{
+    const lead = await Lead.findById(id).populate("salesAgent","name")
+    return lead;
+  }catch(err){
+    console.log(err);
+    throw(err);
+  }
+}
+
+// API route to get the details of a particular lead.
+
+app.get("/lead/:id",async(req,res)=>{
+  try{
+    const lead = await getLead(req.params.id);
+    if(lead){
+      res.json(lead);
+    }else{
+      res.status(404).json({error:"No lead found"})
+    }
+  }catch(err){
+    res.status(500).json({error:"Failed to fetch lead details"})
+  }
+})
+
 // Function to update a lead by its ID.
 
 async function updateLead(id, data) {
