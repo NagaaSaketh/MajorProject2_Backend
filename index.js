@@ -99,6 +99,33 @@ app.get("/agents", async (req, res) => {
   }
 });
 
+// Function to delete a agent by their ID.
+
+async function deleteAgentById(id) {
+  try{
+    const deletedAgent = await SalesAgent.findByIdAndDelete(id);
+    return deletedAgent;
+  }catch(err){
+    console.log(err);
+    throw(err)
+  }
+}
+
+// API route to delete an agent by their id.
+
+app.delete("/agents/:id",async(req,res)=>{
+  try{
+    const deleteAgent = await deleteAgentById(req.params.id);
+    if(deleteAgent){
+      res.status(200).json(deleteAgent);
+    }else{
+      res.status(404).json({error:"Agent not found"})
+    }
+  }catch(err){
+    res.status(500).json({error:"Failed to delete agent."})
+  }
+})
+
 // Function to create a new lead
 async function createLead(newLead) {
   try {
