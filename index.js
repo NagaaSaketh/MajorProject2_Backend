@@ -397,23 +397,25 @@ async function createComment(commentData) {
 app.post("/leads/:id/comments", async (req, res) => {
   try {
     const leadID = req.params.id;
-    const { commentText,authorId } = req.body;
+    const { commentText,author } = req.body;    
     const existingLead = await Lead.findById(leadID).populate("salesAgent");
+    console.log(existingLead);
     if (!existingLead) {
       res.status(404).json({ error: `Lead with ID ${leadID} not found.` });
       return;
     }
-     const existingAgent = await SalesAgent.findById(authorId);
+     const existingAgent = await SalesAgent.findById(author);
+     console.log(existingAgent);
     
     if (!existingAgent) {
-      res.status(404).json({ error: `Agent with ID ${authorId} not found.` });
+      res.status(404).json({ error: `Agent with ID ${author} not found.` });
       return;
     }
     const commentData = {
       lead: leadID,
-      author: authorId,
+      author,
       commentText: commentText.trim(),
-    };
+    };    
     const comment = await createComment(commentData);
     const populatedComment = await Comment.findById(comment._id).populate(
       "author",
@@ -426,7 +428,6 @@ app.post("/leads/:id/comments", async (req, res) => {
       author: populatedComment.author?.name,
       createdAt: populatedComment.createdAt,
     };
-    console.log("Created comment:", response);
     res.status(201).json(response);
   } catch (err) {
     res.status(500).json({ error: "Failed to create a comment." });
