@@ -397,15 +397,21 @@ async function createComment(commentData) {
 app.post("/leads/:id/comments", async (req, res) => {
   try {
     const leadID = req.params.id;
-    const { commentText } = req.body;
+    const { commentText,authorId } = req.body;
     const existingLead = await Lead.findById(leadID).populate("salesAgent");
     if (!existingLead) {
       res.status(404).json({ error: `Lead with ID ${leadID} not found.` });
       return;
     }
+     const existingAgent = await SalesAgent.findById(authorId);
+    
+    if (!existingAgent) {
+      res.status(404).json({ error: `Agent with ID ${authorId} not found.` });
+      return;
+    }
     const commentData = {
       lead: leadID,
-      author: existingLead.salesAgent._id,
+      author: authorId,
       commentText: commentText.trim(),
     };
     const comment = await createComment(commentData);
@@ -420,6 +426,7 @@ app.post("/leads/:id/comments", async (req, res) => {
       author: populatedComment.author?.name,
       createdAt: populatedComment.createdAt,
     };
+    console.log("Created comment:", response);
     res.status(201).json(response);
   } catch (err) {
     res.status(500).json({ error: "Failed to create a comment." });
@@ -457,9 +464,10 @@ app.get("/leads/:id/comments", async (req, res) => {
     const comments = await getAllComments(leadID);
 
     const allComments = comments.map((comment) => ({
+
       id: comment._id,
       commentText: comment.commentText,
-      author: comment.author.name,
+      author: comment.author?.name,
       createdAt: comment.createdAt,
     }));
     if (allComments) {
