@@ -76,7 +76,7 @@ app.post("/agents", async (req, res) => {
 
 async function readAllAgents() {
   try {
-    const agents = SalesAgent.find();
+    const agents = await SalesAgent.find();
     return agents;
   } catch (err) {
     console.log(err);
